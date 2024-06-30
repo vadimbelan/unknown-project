@@ -1,27 +1,35 @@
 import geocoder
 
+# Заглушки для местоположения
+default_location = {
+    'Страна': '',
+    'Регион': '',
+    'Город': '',
+    'Широта': 0.0,
+    'Долгота': 0.0
+}
 
 # Получаем информацию о местоположении
-def get_location_info():
+def get_location_info(defaults):
     try:
         g = geocoder.ip('me')
 
         if g.ok:
             return {
-                'Страна': g.country,
-                'Регион': g.state,
-                'Город': g.city,
-                'Широта': g.latlng[0],
-                'Долгота': g.latlng[1]
+                'Страна': g.country if defaults['Страна'] == '' else defaults['Страна'],
+                'Регион': g.state if defaults['Регион'] == '' else defaults['Регион'],
+                'Город': g.city if defaults['Город'] == '' else defaults['Город'],
+                'Широта': g.latlng[0] if defaults['Широта'] == 0.0 else defaults['Широта'],
+                'Долгота': g.latlng[1] if defaults['Долгота'] == 0.0 else defaults['Долгота']
             }
         else:
-            return {'Ошибка': 'Не удалось получить местоположение'}
+            return defaults
     except Exception as e:
-        return {'Ошибка': str(e)}
+        defaults['Ошибка'] = str(e)
+        return defaults
 
-
-# Сохраняем информацию о местоположени в переменную location_info
-location_info = get_location_info()
+# Сохраняем информацию о местоположении в переменную location_info
+location_info = get_location_info(default_location)
 
 # Выводим информацию о местоположении на экран
 print(location_info)
