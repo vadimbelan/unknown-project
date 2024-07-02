@@ -1,10 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 import geocoder
+import pymorphy2
 
 default_location = {
     'Страна': '',
-    'Регион': '',
+    'Регион': 'Печора',
     'Город': '',
     'Широта': 0.0,
     'Долгота': 0.0
@@ -23,6 +24,8 @@ city_translations = {
     'Yemva': 'Емва',
 }
 
+# Инициализация анализатора pymorphy2
+morph = pymorphy2.MorphAnalyzer()
 
 # Получаем информацию о местоположении
 def get_location_info(defaults):
@@ -47,7 +50,6 @@ def get_location_info(defaults):
         defaults['Ошибка'] = str(e)
         return defaults
 
-
 # Функция для парсинга новостей
 def parse_news(source):
     search_url = f'https://ria.ru/search/?query={source}'
@@ -66,6 +68,26 @@ def parse_news(source):
 
     return news_list
 
+# Функция для лемматизации текста
+def lemmatize_text(text):
+    words = text.split()
+    lemmas = [morph.parse(word)[0].normal_form for word in words]
+    return ' '.join(lemmas)
+
+# Функция для вывода реакции на новости
+def react_to_news(news_title):
+    reactions = {
+        'поезд': 'Узнайте информацию о поезде ',
+        # Добавьте больше ключевых слов и соответствующих реакций
+    }
+
+    # Лемматизация заголовка новости
+    lemmatized_title = lemmatize_text(news_title.lower())
+
+    for keyword, reaction in reactions.items():
+        if keyword in lemmatized_title:
+            return reaction
+    return 'Прочитайте последние новости!'
 
 # Сохраняем информацию о местоположении в переменную location_info
 location_info = get_location_info(default_location)
@@ -80,6 +102,7 @@ source = location_info.get('Регион', '')
 if source:
     news = parse_news(source)
     for news_item in news:
-        print(f"Title: {news_item['title']}\nLink: {news_item['link']}\nDate: {news_item['date']}\n")
+        reaction = react_to_news(news_item['title'])
+        print(f"Title: {news_item['title']}\nLink: {news_item['link']}\nDate: {news_item['date']}\nReaction: {reaction}\n")
 else:
     print("Не удалось определить местоположение")
