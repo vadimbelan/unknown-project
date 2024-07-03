@@ -2,7 +2,9 @@ import requests
 from bs4 import BeautifulSoup
 import geocoder
 import pymorphy2
+import sqlite3
 
+# Инициализация значений по умолчанию для местоположения
 default_location = {
     'Страна': '',
     'Регион': 'Печора',
@@ -27,6 +29,37 @@ city_translations = {
 # Инициализация анализатора pymorphy2
 morph = pymorphy2.MorphAnalyzer()
 
+
+# Создание таблицы новостей
+def create_and_clear_news_table():
+    conn = sqlite3.connect('news.db')
+    cursor = conn.cursor()
+    cursor.execute('''DROP TABLE IF EXISTS news''')  # Удаление существующей таблицы
+    cursor.execute('''CREATE TABLE news (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        title TEXT,
+                        link TEXT,
+                        date TEXT,
+                        latitude REAL,
+                        longitude REAL
+                      )''')
+    conn.commit()
+    conn.close()
+
+
+create_and_clear_news_table()
+
+
+# Функция для добавления новостей в базу данных
+def add_news_to_db(title, link, date, latitude, longitude):
+    conn = sqlite3.connect('news.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO news (title, link, date, latitude, longitude) VALUES (?, ?, ?, ?, ?)",
+                   (title, link, date, latitude, longitude))
+    conn.commit()
+    conn.close()
+
+
 # Получаем информацию о местоположении
 def get_location_info(defaults):
     try:
@@ -50,8 +83,9 @@ def get_location_info(defaults):
         defaults['Ошибка'] = str(e)
         return defaults
 
+
 # Функция для парсинга новостей
-def parse_news(source):
+def parse_news(source, latitude, longitude):
     search_url = f'https://ria.ru/search/?query={source}'
     response = requests.get(search_url)
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -64,9 +98,13 @@ def parse_news(source):
         title = item.find('a', class_='list-item__title').get_text(strip=True)
         link = item.find('a', class_='list-item__title')['href']
         date = item.find('div', class_='list-item__date').get_text(strip=True)
-        news_list.append({'title': title, 'link': link, 'date': date})
+
+        # Используем координаты из get_location_info
+        add_news_to_db(title, link, date, latitude, longitude)
+        news_list.append({'title': title, 'link': link, 'date': date, 'latitude': latitude, 'longitude': longitude})
 
     return news_list
+
 
 # Функция для лемматизации текста
 def lemmatize_text(text):
@@ -74,11 +112,11 @@ def lemmatize_text(text):
     lemmas = [morph.parse(word)[0].normal_form for word in words]
     return ' '.join(lemmas)
 
+
 # Функция для вывода реакции на новости
 def react_to_news(news_title):
     reactions = {
-        'поезд': 'Узнайте информацию о поезде ',
-        # Добавьте больше ключевых слов и соответствующих реакций
+        'Ключ': 'Значение',
     }
 
     # Лемматизация заголовка новости
@@ -89,6 +127,19 @@ def react_to_news(news_title):
             return reaction
     return 'Прочитайте последние новости!'
 
+
+# Функция для отображения таблицы новостей
+def view_news_table():
+    conn = sqlite3.connect('news.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM news")
+    rows = cursor.fetchall()
+    conn.close()
+
+    for row in rows:
+        print(row)
+
+
 # Сохраняем информацию о местоположении в переменную location_info
 location_info = get_location_info(default_location)
 
@@ -96,13 +147,17 @@ location_info = get_location_info(default_location)
 print(location_info)
 
 # Фильтрация местоположения по конкретной области
-source = location_info.get('Регион', '')
+source = location_info.get('Город', '')
 
 # Парсим новости
 if source:
-    news = parse_news(source)
+    news = parse_news(source, location_info['Широта'], location_info['Долгота'])
     for news_item in news:
         reaction = react_to_news(news_item['title'])
-        print(f"Title: {news_item['title']}\nLink: {news_item['link']}\nDate: {news_item['date']}\nReaction: {reaction}\n")
+        print(
+            f"Title: {news_item['title']}\nLink: {news_item['link']}\nDate: {news_item['date']}\nReaction: {reaction}\n")
 else:
     print("Не удалось определить местоположение")
+
+# Вызов функции для отображения таблицы
+view_news_table()
