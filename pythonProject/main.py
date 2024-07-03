@@ -7,7 +7,7 @@ import sqlite3
 # Инициализация значений по умолчанию для местоположения
 default_location = {
     'Страна': '',
-    'Регион': 'Печора',
+    'Регион': '',
     'Город': '',
     'Широта': 0.0,
     'Долгота': 0.0
@@ -29,7 +29,6 @@ city_translations = {
 # Инициализация анализатора pymorphy2
 morph = pymorphy2.MorphAnalyzer()
 
-
 # Создание таблицы новостей
 def create_and_clear_news_table():
     conn = sqlite3.connect('news.db')
@@ -46,9 +45,7 @@ def create_and_clear_news_table():
     conn.commit()
     conn.close()
 
-
 create_and_clear_news_table()
-
 
 # Функция для добавления новостей в базу данных
 def add_news_to_db(title, link, date, latitude, longitude):
@@ -58,7 +55,6 @@ def add_news_to_db(title, link, date, latitude, longitude):
                    (title, link, date, latitude, longitude))
     conn.commit()
     conn.close()
-
 
 # Получаем информацию о местоположении
 def get_location_info(defaults):
@@ -83,7 +79,6 @@ def get_location_info(defaults):
         defaults['Ошибка'] = str(e)
         return defaults
 
-
 # Функция для парсинга новостей
 def parse_news(source, latitude, longitude):
     search_url = f'https://ria.ru/search/?query={source}'
@@ -105,29 +100,6 @@ def parse_news(source, latitude, longitude):
 
     return news_list
 
-
-# Функция для лемматизации текста
-def lemmatize_text(text):
-    words = text.split()
-    lemmas = [morph.parse(word)[0].normal_form for word in words]
-    return ' '.join(lemmas)
-
-
-# Функция для вывода реакции на новости
-def react_to_news(news_title):
-    reactions = {
-        'Ключ': 'Значение',
-    }
-
-    # Лемматизация заголовка новости
-    lemmatized_title = lemmatize_text(news_title.lower())
-
-    for keyword, reaction in reactions.items():
-        if keyword in lemmatized_title:
-            return reaction
-    return 'Прочитайте последние новости!'
-
-
 # Функция для отображения таблицы новостей
 def view_news_table():
     conn = sqlite3.connect('news.db')
@@ -136,28 +108,42 @@ def view_news_table():
     rows = cursor.fetchall()
     conn.close()
 
+    table_html = "<h2>News Table</h2>\n<table border='1'>\n"
+    table_html += "<tr><th>ID</th><th>Title</th><th>Link</th><th>Date</th><th>Latitude</th><th>Longitude</th></tr>\n"
     for row in rows:
-        print(row)
+        table_html += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td><a href='{row[2]}'>{row[2]}</a></td><td>{row[3]}</td><td>{row[4]}</td><td>{row[5]}</td></tr>\n"
+    table_html += "</table>\n"
 
+    return table_html
+
+# Функция для записи HTML-файла
+def write_html(content):
+    with open("output.html", "w", encoding="utf-8") as html_file:
+        html_file.write("<html>\n<head>\n<title>News Output</title>\n<meta charset='UTF-8'>\n</head>\n<body>\n")
+        html_file.write(content)
+        html_file.write("</body>\n</html>")
+
+# Собираем весь HTML-контент
+html_content = ""
 
 # Сохраняем информацию о местоположении в переменную location_info
 location_info = get_location_info(default_location)
 
-# Выводим информацию о местоположении на экран
-print(location_info)
+# Добавляем информацию о местоположении в HTML-контент
+html_content += "<h1>Location Info</h1>\n"
+html_content += f"<p>{location_info}</p>\n"
 
 # Фильтрация местоположения по конкретной области
 source = location_info.get('Город', '')
 
 # Парсим новости
 if source:
-    news = parse_news(source, location_info['Широта'], location_info['Долгота'])
-    for news_item in news:
-        reaction = react_to_news(news_item['title'])
-        print(
-            f"Title: {news_item['title']}\nLink: {news_item['link']}\nDate: {news_item['date']}\nReaction: {reaction}\n")
+    parse_news(source, location_info['Широта'], location_info['Долгота'])
 else:
-    print("Не удалось определить местоположение")
+    html_content += "<p>Не удалось определить местоположение</p>\n"
 
-# Вызов функции для отображения таблицы
-view_news_table()
+# Добавляем таблицу новостей в HTML-контент
+html_content += view_news_table()
+
+# Запись финального HTML-файла
+write_html(html_content)
