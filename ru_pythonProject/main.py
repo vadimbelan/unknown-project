@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 import geocoder
 import pymorphy2
 import sqlite3
-from googletrans import Translator
 from transformers import pipeline
 from datetime import datetime
 
@@ -12,13 +11,10 @@ default_location = {
 }
 
 translations = {'country': {}, 'region': {}, 'city': {}}
-keywords = {'positive': ["Площадки для кинопоказов под открытым небом заработали"], 'neutral': [], 'negative': ["огонь перекинулся на базы отдыха"]}
+keywords = {'positive': ["Площадки для кинопоказов под открытым небом заработали"], 'neutral': [], 'negative': []}
 
 morph = pymorphy2.MorphAnalyzer()
-translator = Translator()
-model1 = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
-model2 = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
-
+sentiment_analysis = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
 
 def init_db():
     with sqlite3.connect('news.db') as conn:
@@ -31,7 +27,6 @@ def init_db():
                             longitude REAL,
                             sentiment TEXT)''')
 
-
 def add_news_to_db(table, title, latitude, longitude, sentiment):
     with sqlite3.connect('news.db') as conn:
         cursor = conn.cursor()
@@ -39,14 +34,12 @@ def add_news_to_db(table, title, latitude, longitude, sentiment):
                        (title, latitude, longitude, sentiment))
         cursor.execute(f"DELETE FROM {table} WHERE id NOT IN (SELECT id FROM {table} ORDER BY id DESC LIMIT 20)")
 
-
 def get_location_info(defaults):
     try:
         g = geocoder.ip('me')
         if g.ok:
             return {
-                'Страна': defaults['Страна'] if defaults['Страна'] else translations['country'].get(g.country,
-                                                                                                    g.country),
+                'Страна': defaults['Страна'] if defaults['Страна'] else translations['country'].get(g.country, g.country),
                 'Регион': defaults['Регион'] if defaults['Регион'] else translations['region'].get(g.state, g.state),
                 'Город': defaults['Город'] if defaults['Город'] else translations['city'].get(g.city, g.city),
                 'Широта': defaults['Широта'] if defaults['Широта'] else g.latlng[0],
@@ -56,43 +49,14 @@ def get_location_info(defaults):
         defaults['Ошибка'] = str(e)
     return defaults
 
-
-def translate_text(text, dest_language='en'):
-    try:
-        return translator.translate(text, dest=dest_language).text
-    except Exception as e:
-        return f"Translation error: {e}"
-
-
 def get_sentiment(text):
     for sentiment, kw_list in keywords.items():
         if any(kw in text for kw in kw_list):
             return sentiment.capitalize()
 
-    sentiment_result1 = model1(text)[0]
-    translated_text = translate_text(text)
-    sentiment_result2 = model2(translated_text)[0]
-
-    label_map1 = {'1 star': 'Negative', '2 stars': 'Negative', '3 stars': 'Neutral', '4 stars': 'Positive',
-                  '5 stars': 'Positive'}
-    sentiment1 = label_map1.get(sentiment_result1['label'], 'Neutral')
-
-    sentiment2 = 'Negative' if sentiment_result2['label'] == 'NEGATIVE' else 'Positive' if sentiment_result2[
-                                                                                               'label'] == 'POSITIVE' else 'Neutral'
-
-    print(f"Original text: {text}")
-    print(f"Translated text: {translated_text}")
-    print(f"Sentiment by model 1 (Russian): {sentiment1}")
-    print(f"Sentiment by model 2 (English): {sentiment2}")
-
-    if sentiment1 == sentiment2:
-        final_sentiment = sentiment1
-    else:
-        final_sentiment = 'Neutral'
-
-    print(f"Final sentiment: {final_sentiment}\n")
-    return final_sentiment
-
+    sentiment_result = sentiment_analysis(text)[0]
+    label_map = {'1 star': 'Negative', '2 stars': 'Negative', '3 stars': 'Neutral', '4 stars': 'Positive', '5 stars': 'Positive'}
+    return label_map.get(sentiment_result['label'], 'Neutral')
 
 def parse_news(source, latitude, longitude, table, search_url, news_selector, title_selector):
     response = requests.get(search_url.format(source=source))
@@ -104,8 +68,8 @@ def parse_news(source, latitude, longitude, table, search_url, news_selector, ti
         sentiment = get_sentiment(title)
         add_news_to_db(table, title, latitude, longitude, sentiment)
         news_list.append({'title': title, 'latitude': latitude, 'longitude': longitude, 'sentiment': sentiment})
+        print(f"Title: {title}\nSentiment: {sentiment}\n")
     return news_list
-
 
 def view_news_table(table_name):
     with sqlite3.connect('news.db') as conn:
@@ -119,14 +83,12 @@ def view_news_table(table_name):
         table_html += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td style='color:{color}'>{row[4]}</td></tr>\n"
     return table_html + "</table>\n"
 
-
 def write_html(content, location_info, source, timestamp):
     with open("output.html", "w", encoding="utf-8") as html_file:
         html_file.write(f"<html><head><title>News Output</title><meta charset='UTF-8'></head><body>")
         html_file.write(f"<h2>Source Information</h2><p>Источник: {source}</p>")
         html_file.write(f"<p>Местоположение: {location_info}</p>")
         html_file.write(f"<p>Время: {timestamp}</p>{content}</body></html>")
-
 
 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 html_content = ""
@@ -135,9 +97,7 @@ location_info = get_location_info(default_location)
 source = location_info.get('Город', '')
 
 sources = {
-    1: {'name': 'Rambler.ru', 'table': 'news_nova_rambler_ru',
-        'search_url': 'https://nova.rambler.ru/search?query={source}',
-        'news_selector': 'h3.MixinCoolstream_news__title--1SXVJ', 'title_selector': None}
+    1: {'name': 'Rambler.ru', 'table': 'news_nova_rambler_ru', 'search_url': 'https://nova.rambler.ru/search?query={source}', 'news_selector': 'h3.MixinCoolstream_news__title--1SXVJ', 'title_selector': None}
 }
 
 init_db()
@@ -150,8 +110,7 @@ try:
     choice = int(input("Введите номер: "))
     if choice in sources:
         src = sources[choice]
-        parse_news(source, location_info['Широта'], location_info['Долгота'], src['table'], src['search_url'],
-                   src['news_selector'], src['title_selector'])
+        parse_news(source, location_info['Широта'], location_info['Долгота'], src['table'], src['search_url'], src['news_selector'], src['title_selector'])
         html_content += view_news_table(src['table'])
     else:
         print("Неверный выбор. Пожалуйста, выберите номер от 1 до 3.")
