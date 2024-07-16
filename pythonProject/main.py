@@ -6,9 +6,10 @@ import sqlite3
 from googletrans import Translator
 from transformers import pipeline
 from datetime import datetime
+import spacy
 
 default_location = {
-    'Страна': '', 'Регион': '', 'Город': 'Нижний Новгород', 'Широта': 0.0, 'Долгота': 0.0
+    'Страна': '', 'Регион': '', 'Город': 'Авария', 'Широта': 0.0, 'Долгота': 0.0
 }
 
 translations = {'country': {}, 'region': {}, 'city': {}}
@@ -18,7 +19,7 @@ morph = pymorphy2.MorphAnalyzer()
 translator = Translator()
 model1 = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
 model2 = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
-
+nlp = spacy.load("ru_core_news_sm")
 
 def init_db():
     with sqlite3.connect('news.db') as conn:
@@ -29,24 +30,22 @@ def init_db():
                             title TEXT,
                             latitude REAL,
                             longitude REAL,
-                            sentiment TEXT)''')
+                            sentiment TEXT,
+                            location TEXT)''')
 
-
-def add_news_to_db(table, title, latitude, longitude, sentiment):
+def add_news_to_db(table, title, latitude, longitude, sentiment, location):
     with sqlite3.connect('news.db') as conn:
         cursor = conn.cursor()
-        cursor.execute(f"INSERT INTO {table} (title, latitude, longitude, sentiment) VALUES (?, ?, ?, ?)",
-                       (title, latitude, longitude, sentiment))
+        cursor.execute(f"INSERT INTO {table} (title, latitude, longitude, sentiment, location) VALUES (?, ?, ?, ?, ?)",
+                       (title, latitude, longitude, sentiment, location))
         cursor.execute(f"DELETE FROM {table} WHERE id NOT IN (SELECT id FROM {table} ORDER BY id DESC LIMIT 20)")
-
 
 def get_location_info(defaults):
     try:
         g = geocoder.ip('me')
         if g.ok:
             return {
-                'Страна': defaults['Страна'] if defaults['Страна'] else translations['country'].get(g.country,
-                                                                                                    g.country),
+                'Страна': defaults['Страна'] if defaults['Страна'] else translations['country'].get(g.country, g.country),
                 'Регион': defaults['Регион'] if defaults['Регион'] else translations['region'].get(g.state, g.state),
                 'Город': defaults['Город'] if defaults['Город'] else translations['city'].get(g.city, g.city),
                 'Широта': defaults['Широта'] if defaults['Широта'] else g.latlng[0],
@@ -56,13 +55,11 @@ def get_location_info(defaults):
         defaults['Ошибка'] = str(e)
     return defaults
 
-
 def translate_text(text, dest_language='en'):
     try:
         return translator.translate(text, dest=dest_language).text
     except Exception as e:
         return f"Translation error: {e}"
-
 
 def get_sentiment(text):
     for sentiment, kw_list in keywords.items():
@@ -73,12 +70,10 @@ def get_sentiment(text):
     translated_text = translate_text(text)
     sentiment_result2 = model2(translated_text)[0]
 
-    label_map1 = {'1 star': 'Negative', '2 stars': 'Negative', '3 stars': 'Neutral', '4 stars': 'Positive',
-                  '5 stars': 'Positive'}
+    label_map1 = {'1 star': 'Negative', '2 stars': 'Negative', '3 stars': 'Neutral', '4 stars': 'Positive', '5 stars': 'Positive'}
     sentiment1 = label_map1.get(sentiment_result1['label'], 'Neutral')
 
-    sentiment2 = 'Negative' if sentiment_result2['label'] == 'NEGATIVE' else 'Positive' if sentiment_result2[
-                                                                                               'label'] == 'POSITIVE' else 'Neutral'
+    sentiment2 = 'Negative' if sentiment_result2['label'] == 'NEGATIVE' else 'Positive' if sentiment_result2['label'] == 'POSITIVE' else 'Neutral'
 
     print(f"Original text: {text}")
     print(f"Translated text: {translated_text}")
@@ -93,6 +88,12 @@ def get_sentiment(text):
     print(f"Final sentiment: {final_sentiment}\n")
     return final_sentiment
 
+def extract_location(text):
+    doc = nlp(text)
+    locations = [ent.text for ent in doc.ents if ent.label_ == "LOC"]
+    if locations:
+        return ', '.join(locations)
+    return None
 
 def parse_news(source, latitude, longitude, table, search_url, news_selector, title_selector):
     response = requests.get(search_url.format(source=source))
@@ -102,10 +103,10 @@ def parse_news(source, latitude, longitude, table, search_url, news_selector, ti
     for item in soup.select(news_selector)[:10]:
         title = item.select_one(title_selector).get_text(strip=True) if title_selector else item.get_text(strip=True)
         sentiment = get_sentiment(title)
-        add_news_to_db(table, title, latitude, longitude, sentiment)
-        news_list.append({'title': title, 'latitude': latitude, 'longitude': longitude, 'sentiment': sentiment})
+        location = extract_location(title)
+        add_news_to_db(table, title, latitude, longitude, sentiment, location)
+        news_list.append({'title': title, 'latitude': latitude, 'longitude': longitude, 'sentiment': sentiment, 'location': location})
     return news_list
-
 
 def view_news_table(table_name):
     with sqlite3.connect('news.db') as conn:
@@ -113,12 +114,11 @@ def view_news_table(table_name):
         rows = cursor.execute(f"SELECT * FROM {table_name}").fetchall()
 
     table_html = f"<h2>{table_name.replace('_', ' ').title()} Table</h2>\n<table border='1'>\n"
-    table_html += "<tr><th>ID</th><th>Title</th><th>Latitude</th><th>Longitude</th><th>Sentiment</th></tr>\n"
+    table_html += "<tr><th>ID</th><th>Title</th><th>Latitude</th><th>Longitude</th><th>Sentiment</th><th>Location</th></tr>\n"
     for row in rows:
         color = {'Positive': 'green', 'Neutral': 'blue', 'Negative': 'red'}.get(row[4], 'black')
-        table_html += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td style='color:{color}'>{row[4]}</td></tr>\n"
+        table_html += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td style='color:{color}'>{row[4]}</td><td>{row[5]}</td></tr>\n"
     return table_html + "</table>\n"
-
 
 def write_html(content, location_info, source, timestamp):
     with open("output.html", "w", encoding="utf-8") as html_file:
@@ -126,7 +126,6 @@ def write_html(content, location_info, source, timestamp):
         html_file.write(f"<h2>Source Information</h2><p>Источник: {source}</p>")
         html_file.write(f"<p>Местоположение: {location_info}</p>")
         html_file.write(f"<p>Время: {timestamp}</p>{content}</body></html>")
-
 
 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 html_content = ""
