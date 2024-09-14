@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Избранные Новости</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Raleway', sans-serif;
+            background-color: #f3f3f3;
+            color: #333;
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 20px;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px auto;
+            background-color: #fff;
+        }
+
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        table th {
+            background-color: #007BA5;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        table td {
+            border: 1px solid #ddd;
+        }
+
+        button {
+            padding: 8px 12px;
+            background-color: #079BCF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #007BA5;
+        }
+
+        /* Style for sentiment colors */
+        td[style*='green'] {
+            color: green;
+        }
+
+        td[style*='blue'] {
+            color: blue;
+        }
+
+        td[style*='red'] {
+            color: red;
+        }
+
+        /* Responsive styling */
+        @media (max-width: 600px) {
+            table, th, td {
+                display: block;
+                width: 100%;
+            }
+
+            th {
+                display: none;
+            }
+
+            td {
+                display: flex;
+                justify-content: space-between;
+                padding: 10px;
+                border: 1px solid #ddd;
+            }
+
+            td::before {
+                content: attr(data-label);
+                font-weight: bold;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <h2>Избранные Новости</h2>
+    <table border="1">
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Sentiment</th>
+            <th>Location</th>
+            <th>Remove</th>
+        </tr>
+        {% for row in favorite_news %}
+        <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[1] }}</td>
+            <td>{{ row[2] }}</td>
+            <td>{{ row[3] }}</td>
+            <td style="color: {{ 'green' if row[4] == 'Positive' else 'blue' if row[4] == 'Neutral' else 'red' }}">{{ row[4] }}</td>
+            <td>{{ row[5] }}</td>
+            <td>
+                <button id="remove-button-{{ row[0] }}" onclick="removeFavorite({{ row[0] }}, 'remove-button-{{ row[0] }}')">
+                    Удалить
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <script type="text/javascript">
+        function removeFavorite(newsId, buttonId) {
+            fetch(`/remove_favorite/${newsId}`)
+                .then(response => response.text())
+                .then(text => {
+                    document.getElementById(buttonId).closest('tr').remove();
+                });
+        }
+    </script>
+</body>
+</html>

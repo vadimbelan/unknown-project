@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная</title>
+</head>
+<body>
+    <h1>Добро пожаловать, {{ username }}!</h1>
+    <p>Ваш бюджет: {{ budget }} {{ currency }}</p>
+    <a href="{{ url_for('main.budget') }}"><button>Задать бюджет</button></a>
+    <a href="{{ url_for('main.logout') }}"><button>Выйти из аккаунта</button></a>
+    <a href="{{ url_for('main.favorites') }}"><button>Посмотреть избранные новости</button></a>
+    <form action="/process" method="post">
+        <label for="source">Выберите источник:</label>
+        <select name="source" id="source">
+            <option value="1">Rambler.ru</option>
+        </select><br><br>
+        <label for="city">Куда вы хотите отправиться?</label><br>
+        <input type="text" name="city" id="city" placeholder="Введите город" required><br><br>
+        <label for="location-yes">Выводить новости по геопозиции?</label><br>
+        <input type="radio" id="location-yes" name="location" value="да">
+        <label for="location-yes">Да</label>
+        <input type="radio" id="location-no" name="location" value="нет" checked>
+        <label for="location-no">Нет</label><br><br>
+        <label for="tags">Введите теги (каждый тег - через enter):</label><br>
+        <textarea name="tags" id="tags" rows="5" cols="50"></textarea><br><br>
+        <input type="submit" value="Отправить">
+    </form>
+    {{ news_content | safe }}
+</body>
+</html>

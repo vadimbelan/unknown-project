@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Установка бюджета</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        @import url(http://fonts.googleapis.com/css?family=Raleway:700,800);
+
+        html, body { margin: 0; }
+
+        :focus { outline: none; }
+        ::-webkit-input-placeholder { color: #DEDFDF; }
+        ::-moz-placeholder { color: #DEDFDF; }
+        :-moz-placeholder { color: #DEDFDF; }
+        ::-ms-input-placeholder { color: #DEDFDF; }
+
+        body {
+          background: #6ED0F6;
+          color: #fff;
+          font-family: 'Raleway', sans-serif;
+          -webkit-font-smoothing: antialiased;
+        }
+
+        #wrapper {
+          width: 450px;
+          margin: 100px auto;
+          padding: 20px;
+          background: #fff;
+          border-radius: 10px;
+          color: #333;
+        }
+
+        h1 {
+          text-align: center;
+          font-size: 24px;
+          margin-bottom: 20px;
+        }
+
+        label {
+          font-size: 18px;
+          display: block;
+          margin-bottom: 5px;
+        }
+
+        input[type=number],
+        select {
+          background: #fff;
+          border: 2px solid #ddd;
+          border-radius: 8px;
+          font-size: 16px;
+          height: 40px;
+          width: 100%;
+          margin-bottom: 10px;
+          padding: 0 10px;
+          box-sizing: border-box;
+        }
+
+        button {
+          background: #079BCF;
+          border: none;
+          border-radius: 8px;
+          color: #fff;
+          cursor: pointer;
+          font-family: 'Raleway', sans-serif;
+          font-size: 18px;
+          height: 40px;
+          width: 100%;
+          margin-bottom: 10px;
+          overflow: hidden;
+          transition: all .3s cubic-bezier(.6,0,.4,1);
+        }
+
+        button:hover {
+          background: #007BA5;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <h1>Введите ваш бюджет</h1>
+        <form action="{{ url_for('main.budget') }}" method="post">
+            <label for="budget">Введите ваш бюджет:</label><br>
+            <input type="number" name="budget" id="budget" step="0.01" required><br><br>
+
+            <label for="currency">Выберите валюту:</label><br>
+            <select name="currency" id="currency">
+                <option value="руб.">руб.</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+            </select><br><br>
+
+            <button type="submit">Ок</button>
+        </form>
+    </div>
+</body>
+</html>

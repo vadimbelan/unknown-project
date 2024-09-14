@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход</title>
+    <style>
+        @import url(http://fonts.googleapis.com/css?family=Raleway:700,800);
+
+        html, body { margin: 0; }
+
+        :focus { outline: none; }
+        ::-webkit-input-placeholder { color: #DEDFDF; }
+        ::-moz-placeholder { color: #DEDFDF; }
+        :-moz-placeholder { color: #DEDFDF; }
+        ::-ms-input-placeholder { color: #DEDFDF; }
+
+        body {
+          background: #6ED0F6;
+          color: #fff;
+          font-family: 'Raleway', sans-serif;
+          -webkit-font-smoothing: antialiased;
+        }
+
+        #wrapper {
+          width: 450px;
+          margin: 100px auto;
+          padding: 20px;
+          background: #fff;
+          border-radius: 10px;
+          color: #333;
+        }
+
+        h1 {
+          text-align: center;
+          font-size: 24px;
+          margin-bottom: 20px;
+        }
+
+        label {
+          font-size: 18px;
+          display: block;
+          margin-bottom: 5px;
+        }
+
+        input[type=email],
+        input[type=password] {
+          background: #fff;
+          border: 2px solid #ddd;
+          border-radius: 8px;
+          font-size: 16px;
+          height: 40px;
+          width: 100%;
+          margin-bottom: 10px;
+          padding: 0 10px;
+          box-sizing: border-box;
+        }
+
+        button {
+          background: #079BCF;
+          border: none;
+          border-radius: 8px;
+          color: #fff;
+          cursor: pointer;
+          font-family: 'Raleway', sans-serif;
+          font-size: 18px;
+          height: 40px;
+          width: 100%;
+          margin-bottom: 10px;
+          overflow: hidden;
+          transition: all .3s cubic-bezier(.6,0,.4,1);
+        }
+
+        button:hover {
+          background: #007BA5;
+        }
+
+        #hint {
+          width: 100%;
+          text-align: center;
+          position: absolute;
+          bottom: 20px;
+          color: #fff;
+        }
+
+        .center-text {
+          text-align: center;
+          margin-top: 20px;
+          font-size: 16px;
+        }
+
+        .center-text a {
+          color: #079BCF;
+          text-decoration: none;
+          font-weight: bold;
+        }
+
+        .center-text a:hover {
+          text-decoration: underline;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <h1>Войти в аккаунт</h1>
+        <form action="{{ url_for('main.login') }}" method="post">
+            <label for="email">Email:</label>
+            <input type="email" name="email" id="email" required><br><br>
+            <label for="password">Пароль:</label>
+            <input type="password" name="password" id="password" required><br><br>
+            <button type="submit">Войти</button>
+        </form>
+        <p class="center-text">Нет аккаунта? <a href="{{ url_for('main.register') }}">Зарегистрироваться</a></p>
+    </div>
+
+</body>
+</html>
