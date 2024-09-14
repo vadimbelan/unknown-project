@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>News Output</title>
+</head>
+<body>
+    <h2>Source Information</h2>
+    <p>Источник: {{ src }}</p>
+    <p>Время: {{ ts }}</p>
+
+    {% if tags %}
+    <h2>Введённые теги:</h2>
+    <p>{{ tags | join(', ') }}</p>
+    {% endif %}
+
+    {{ content | safe }}
+
+    <p>{{ sentiment_message_user }}</p>
+    <p>{{ sentiment_message_geo }}</p>
+
+    {{ map_html | safe }}
+</body>
+</html>
