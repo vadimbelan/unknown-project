@@ -17,7 +17,7 @@
 #define DESCRIPTOR_SAMPLE_COUNT 4
 #define DESCRIPTOR_WINDOW_RADIUS 1.0
 
-void reconstruction::ScaleInvariantFeatureTransform::detectAndCompute() { }
+void reconstruction::SIFT::detectAndCompute() { }
 
 void reconstruction::SIFT::buildPyramids(const cv::Mat &imgOrg, std::vector<cv::Mat> &gaussianPyramid, std::vector<cv::Mat> &DoGPyramid) {
     gaussianPyramid.resize(NUM_OCTAVES * GAUSSIAN_IMAGES_PER_OCTAVE);
