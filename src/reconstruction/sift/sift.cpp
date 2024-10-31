@@ -1,10 +1,15 @@
 #include "sift.h"
 
-#define NUM_OCTAVES ?
-#define LAYERS_PER_OCTAVE ?
-#define GAUSSIAN_IMAGES_PER_OCTAVE (LAYERS_PER_OCTAVE + ?)
-#define DOG_IMAGES_PER_OCTAVE (LAYERS_PER_OCTAVE + ?)
-#define INITIAL_SIGMA ?
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+#include <libutils/rasserts.h>
+
+#define NUM_OCTAVES 3 +
+#define LAYERS_PER_OCTAVE 3 +
+#define GAUSSIAN_IMAGES_PER_OCTAVE (LAYERS_PER_OCTAVE + 3) +
+#define DOG_IMAGES_PER_OCTAVE (LAYERS_PER_OCTAVE + 2) +
+#define INITIAL_SIGMA 0.75 +
 #define INPUT_BLUR_SIGMA ?
 #define NUM_ORIENTATION_HIST_BINS ?
 #define ORIENTATION_WINDOW_RADIUS ?
@@ -14,67 +19,52 @@
 #define DESCRIPTOR_SAMPLE_COUNT ?
 #define DESCRIPTOR_WINDOW_RADIUS ?
 
-void reconstruction::ScaleInvariantFeatureTransform::detectAndCompute() {}
+void reconstruction::ScaleInvariantFeatureTransform::detectAndCompute() { }
 
-void reconstruction::SIFT::buildPyramids() {
-// Инициализация пирамиды Гаусса: выделяем память для хранения изображений пирамиды Гаусса
-// Вычисляем коэффициент масштабирования между слоями в одной октаве
+void reconstruction::SIFT::buildPyramids(const cv::Mat &imgOrg, std::vector<cv::Mat> &gaussianPyramid, std::vector<cv::Mat> &DoGPyramid) {
+    gaussianPyramid.resize(NUM_OCTAVES * GAUSSIAN_IMAGES_PER_OCTAVE);
+    const double k = pow(2.0, 1.0 / LAYERS_PER_OCTAVE);
 
-// Цикл по всем октавам
-    // Если это первая октава, используем исходное изображение
-    // Для последующих октав, используем изображение из предыдущей октавы, уменьшенное в два раза
+    for (size_t octave = 0; octave < NUM_OCTAVES; ++octave) {
+        int layer = 0;
+        if (octave == 0) {
+            gaussianPyramid[octave * GAUSSIAN_IMAGES_PER_OCTAVE + layer] = imgOrg.clone();
+        } else {
+            size_t prevOctave = octave - 1;
+            cv::Mat img = gaussianPyramid[prevOctave * GAUSSIAN_IMAGES_PER_OCTAVE + (GAUSSIAN_IMAGES_PER_OCTAVE - 3)].clone();
+            cv::resize(img, img, cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
+            gaussianPyramid[octave * GAUSSIAN_IMAGES_PER_OCTAVE + layer] = img;
+        }
 
-    // Параллельный цикл по слоям в октаве (начиная со второго слоя)
-        // Вычисляем текущую сигму для текущего слоя и октавы
-        // Вычисляем сигму для первого слоя в текущей октаве
-        // Вычисляем сигму для гауссовского размытия
-        // Клонируем изображение первого слоя в текущей октаве     
-        // Применяем гауссовское размытие к изображению
-        // Сохраняем размытое изображение в пирамиду Гаусса
-    
-// Инициализация пирамиды разности гауссианов: выделяем память для хранения изображений пирамиды DoG
+        #pragma omp parallel for
+        for (ptrdiff_t layer = 1; layer < GAUSSIAN_IMAGES_PER_OCTAVE; ++layer) {
+            double sigmaCur  = INITIAL_SIGMA * pow(2.0, octave) * pow(k, layer);
+            double sigmaFirstLayer = INITIAL_SIGMA * pow(2.0, octave);
+            double sigma = sqrt(sigmaCur * sigmaCur - sigmaFirstLayer * sigmaFirstLayer);
 
-// Параллельный цикл по всем октавам
-    // Цикл по всем слоям в октаве (начиная со второго слоя)
-        // Получаем индекс предыдущего слоя
-        // Получаем изображения предыдущего и текущего слоя из пирамиды Гаусса       
-        // Вычисляем разность гауссианов (DoG) между текущим и предыдущим слоем
-        // Получаем индекс слоя в пирамиде DoG
-        // Сохраняем разность гауссианов в пирамиду DoG
+            cv::Mat imgLayer = gaussianPyramid[octave * GAUSSIAN_IMAGES_PER_OCTAVE].clone();
+            cv::GaussianBlur(imgLayer, imgLayer, cv::Size(0, 0), sigma, sigma);
+            gaussianPyramid[octave * GAUSSIAN_IMAGES_PER_OCTAVE + layer] = imgLayer;
+        }
+    }
+
+    DoGPyramid.resize(NUM_OCTAVES * DOG_IMAGES_PER_OCTAVE);
+
+    #pragma omp parallel for
+    for (ptrdiff_t octave = 0; octave < NUM_OCTAVES; ++octave) {
+        for (size_t layer = 1; layer < GAUSSIAN_IMAGES_PER_OCTAVE; ++layer) {
+            int prevLayer = layer - 1;
+            cv::Mat imgPrevGaussian = gaussianPyramid[octave * GAUSSIAN_IMAGES_PER_OCTAVE + prevLayer];
+            cv::Mat imgCurGaussian  = gaussianPyramid[octave * GAUSSIAN_IMAGES_PER_OCTAVE + layer];
+            cv::Mat imgCurDoG = imgCurGaussian - imgPrevGaussian;
+
+            int dogLayer = layer - 1;
+            DoGPyramid[octave * DOG_IMAGES_PER_OCTAVE + dogLayer] = imgCurDoG;
+        }
+    }
 }
 
 void reconstruction::SIFT::findLocalExtremasAndDescribe() {
-// Параллельный блок для обработки ключевых точек и их описаний
-    // Векторы для хранения ключевых точек и их описаний в текущем потоке
-
-    // Цикл по всем октавам
-        // Вычисление коэффициента уменьшения масштаба для текущей октавы
-
-        // Цикл по всем слоям в октаве начиная со второго и заканчивая предпоследним
-            // Получение изображений разности гауссианов для текущего слоя и его соседей
-
-            // Параллельный цикл по пикселям изображения
-                    // Получение значения центрального пикселя
-                    // Проверка, является ли текущий пиксель экстремумом
-                    // Создание ключевой точки
-                    // Установка координат ключевой точки с учетом масштаба октавы
-                    // Вычисление размера ключевой точки
-                    // Получение изображения из пирамиды Гаусса для текущего слоя
-                    // Построение гистограммы ориентации для ключевой точки
-
-                    // Проход по всем бинам гистограммы ориентации
-                        // Проверка, является ли текущий бин пиком
-                        // Установка угла ориентации ключевой точки
-                        // Построение дескриптора для ключевой точки
-                        // Добавление ключевой точки и её дескриптора в текущий поток
-
-// Критическая секция для объединения результатов из всех потоков
-// Проверка, что количество ключевых точек и их описаний совпадает
-// Инициализация матрицы для хранения дескрипторов
-// Заполнение матрицы дескрипторов
-}
-
-bool reconstruction::SIFT::buildLocalOrientationHists() {
 // Инициализация вектора для хранения гистограммы ориентации
 // Инициализация переменной для хранения максимального значения в гистограмме
 // Проверка, что ключевая точка находится достаточно далеко от границ изображения
@@ -98,7 +88,7 @@ bool reconstruction::SIFT::buildLocalOrientationHists() {
 // Возвращение успешного результата
 }
 
-bool reconstruction::SIFT::buildDescriptor() {
+bool reconstruction::SIFT::buildDescriptor() { 
 // Создание матрицы поворота для учета угла ориентации ключевой точки
 // Вычисление ширины окна выборки
 // Инициализация вектора для хранения дескриптора
