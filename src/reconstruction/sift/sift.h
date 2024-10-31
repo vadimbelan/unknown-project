@@ -8,7 +8,8 @@ namespace reconstruction {
         void detectAndCompute();
     protected:
         void buildPyramids(const cv::Mat &imgOrg, std::vector<cv::Mat> &gaussianPyramid, std::vector<cv::Mat> &DoGPyramid);
-        void findLocalExtremasAndDescribe();
+        void findLocalExtremasAndDescribe(const std::vector<cv::Mat> &gaussianPyramid, const std::vector<cv::Mat> &DoGPyramid,
+                                          std::vector<cv::KeyPoint> &keyPoints, cv::Mat &desc);
         bool buildLocalOrientationHists();
         bool buildDescriptor();
         double contrast_threshold;
