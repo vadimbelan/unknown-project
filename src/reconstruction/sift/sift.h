@@ -10,9 +10,10 @@ namespace reconstruction {
         void buildPyramids(const cv::Mat &imgOrg, std::vector<cv::Mat> &gaussianPyramid, std::vector<cv::Mat> &DoGPyramid);
         void findLocalExtremasAndDescribe(const std::vector<cv::Mat> &gaussianPyramid, const std::vector<cv::Mat> &DoGPyramid,
                                           std::vector<cv::KeyPoint> &keyPoints, cv::Mat &desc);
-        bool buildLocalOrientationHists();
-        bool buildDescriptor();
+        bool buildLocalOrientationHists(const cv::Mat &img, size_t i, size_t j, size_t radius,
+                                        std::vector<float> &votes, float &biggestVote);
+        bool buildDescriptor(const cv::Mat &img, float px, float py, double descrRadius, float angle,
+                             std::vector<float> &descriptor);
         double contrast_threshold;
     };
-
 }
