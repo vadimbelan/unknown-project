@@ -30,6 +30,8 @@ SfM (Structure from Motion)
 
 ```bash
 export CPATH=/opt/homebrew/opt/libomp/include:$CPATH
+```
+```bash
 export LIBRARY_PATH=/opt/homebrew/opt/libomp/lib:$LIBRARY_PATH
 ```
 
