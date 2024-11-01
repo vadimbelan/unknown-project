@@ -4,9 +4,13 @@ SIFT (Scale-Invariant Feature Transform)
 
 ❌ **2. Сопоставление ключевых точек**
 
-RANSAC
+FLANN (Fast Library for Approximate Nearest Neighbors)
+
+Brute-Force Nearest Neighbor Matching
 
 K-ratio test
+
+RANSAC (Random Sample Consensus)
 
 ❌ **3. Построение карт глубины**
 
